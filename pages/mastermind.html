@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mastermind</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+</head>
+
+<script>
+    let gameOver = false;
+    let currentGuessNum = 1;
+    let currentSquare = 1;
+    let currentEntry = "";
+    let codeLength = 4;
+    let numGuesses = 5;
+    var difficulty = 0; //Default is Easy, 1=Medium, 2=Hard
+
+    setWinCode();
+
+    //Respond to physical keyboard key press
+    function wordle() {
+        document.onkeydown = function (e) {
+            e = e || window.event;
+            // console.log("FROM PHYSICAL KEYBOARD: " + e.keyCode);
+            registerKeyPress(e.keyCode);
+        };
+        
+        // var currentTile = document.getElementById("pegs1-1");
+        // currentTile.style.backgroundColor = "red";
+        // currentTile = document.getElementById("pegs1-2");
+        // currentTile.style.backgroundColor = "yellow";
+        // currentTile = document.getElementById("pegs1-3");
+        // currentTile.style.backgroundColor = "green";
+        // currentTile = document.getElementById("pegs1-4");
+        // currentTile.style.backgroundColor = "blue";
+
+        var message = "Break the code!";
+        showPopup(message, 'black');
+        // var popup = document.getElementById("myPopup");
+        // popup.style.visibility = 'visible';
+    }
+
+    //Respond to virtual keyboard key press
+    function keyboard(input) {
+        var keyValue = input;
+        if(input == 'enter') keyValue = 13;
+        else if(input == 'delete') keyValue = 8;
+        // else keyValue = input.charCodeAt(0)-32;
+
+        // console.log("FROM VIRTUAL KEYBOARD: " + letter + " " + keyValue);
+        registerKeyPress(keyValue);
+    }
+
+    //React to a key press (physical or virtual)
+    function registerKeyPress(keyNum) {
+        console.log("PROCESSING KEY: " + keyNum + " is game over: " + gameOver);
+        //Enter a letter
+        if(!gameOver) {
+            if(keyNum >= 49 && keyNum <= 52) {
+                // hidepopup();
+                addNumberToCurrentGuess(keyNum);
+                deactivateLevelDropDown();
+            }
+            //Remove a number
+            if(keyNum == 8) {
+                deleteLastNumber();
+            }
+            //Submit code guess
+            if(keyNum == 13) {
+                if(currentEntry.length == codeLength)
+                    submitCurrentGuess();
+                else {
+                    var message = "Not a valid guess";
+                    showPopup(message, 'red');
+                    console.log("NOT VALID: " + currentEntry);
+                }
+                // else {
+                //     var message = "Not enough numbers";
+                //     // document.getElementById("alert").innerHTML = "Not enough numbers " + winCode;
+                //     showPopup(message, 'red');
+                //     console.log("NOT ENOUGH NUMBERS");
+                // }
+            }
+        }
+        else {
+            // document.getElementById("alert").innerHTML = "REPLAY";
+            if(keyNum == 13)  //187 is the old replay value using the + character
+                resetGame();
+        }
+    }
+
+    function setWinCode() {
+        if(difficulty == 0)
+            setWinCode_Easy();
+        if(difficulty == 1)
+            setWinCode_Medium();
+        if(difficulty == 2)
+            setWinCode_Hard();
+    }
+
+    //Easy level uses only the numbers 1,2,3,4 with NO repeats
+    function setWinCode_Easy() {
+        var codeNums = ['1','2','3','4'];
+        /* Randomize array in-place using Durstenfeld shuffle algorithm */
+        for (var i = codeNums.length - 1; i > 0; i--) {
+            var j = Math.floor(Math.random() * (i + 1));
+            var temp = codeNums[i];
+            codeNums[i] = codeNums[j];
+            codeNums[j] = temp;
+        }
+
+        winCode = codeNums.join('');
+        console.log("winCode_Easy = " + winCode);
+    }
+
+    //Medium level can have repeated digits, but only 3
+    function setWinCode_Medium() {
+        winCode = "";
+        var count = 0;
+        while(winCode.length < 4 && count < 100) {
+            count++;
+            var num = Math.floor(Math.random()*codeLength) + 1;
+            if(!winCodeAlreadyHasTwoOfThese(num))
+                winCode += num;
+            // console.log("num = " + num + " winCode = " + winCode);
+        }
+        console.log("winCode_Medium = " + winCode);
+    }
+
+    //Hard level can be any possible combination of the numbers 1,2,3,4 with any number of repeats
+    function setWinCode_Hard() {
+        winCode = "";
+        for(var i=0; i < codeLength; i++) {
+            var num = Math.floor(Math.random()*codeLength) + 1;
+            winCode += num;
+        }
+        console.log("winCode_Hard = " + winCode);
+    }
+
+    function winCodeAlreadyHasTwoOfThese(num) {
+        var count = 0;
+        for(var i = 0; i < winCode.length; i++)
+            if(Number(winCode.substring(i, i+1)) == num)
+                count++;
+        console.log("Check for two: " + winCode + " " + count);
+        return count >= 2;
+    }
+
+    function setCurrentSquareValueBasedOnOpenSquares() {
+        //THIS NEW WAY ALLOWS FOR THE FACT THAT SOME SQUARE CAN BE EMPTY IN THE MIDDLE OF THE CURRENT GUESS
+        if(document.getElementById(currentGuessNum + "-1").innerHTML == "")
+            currentSquare = 1;
+        else if(document.getElementById(currentGuessNum + "-2").innerHTML == "")
+            currentSquare = 2;
+        else if(document.getElementById(currentGuessNum + "-3").innerHTML == "")
+            currentSquare = 3;
+        else if(document.getElementById(currentGuessNum + "-4").innerHTML == "")
+            currentSquare = 4;
+    }
+    
+    function addNumberToCurrentGuess(keyNum) {
+        // document.getElementById("alert").innerHTML = "";
+        hidePopup();
+        var currentSlot = document.getElementById(currentGuessNum + "-" + currentSquare);
+        
+        if(currentSlot.innerHTML == "") {
+            currentSlot.innerHTML = String.fromCharCode(keyNum);
+            currentSlot.style.borderColor = "#565758";
+            currentSlot.style.color = "#aaa";
+            setCurrentEntryValueFromTileCurrentRowValues()
+            console.log("ADDING: " + String.fromCharCode(keyNum) + " currentEntry = " + currentEntry);
+        }
+
+        setCurrentSquareValueBasedOnOpenSquares();
+    }
+
+    // This function is called when a square is pressed to update the value by pressing on the tiles themselves
+    function setNextNumberOnTile(tileId) {
+       var row = tileId.substring(0, 1);
+       if(row == currentGuessNum) {
+           hidePopup();
+           deactivateLevelDropDown();
+
+           var currentTile = document.getElementById(tileId);
+           currentTile.style.borderColor = "#565758";
+           currentTile.style.color = "#aaa";
+           var currentNumOnTile = currentTile.innerHTML;
+           if(currentNumOnTile == "")
+               currentTile.innerHTML = "1";
+           else {
+               var currentNum = Number(currentNumOnTile);
+               currentNum++;
+               if(currentNum > 4) {
+                   currentTile.innerHTML = "";
+                   currentTile.style.borderColor = "rgb(200,200,200)";
+               }
+               else
+                   currentTile.innerHTML = currentNum;
+           }
+           setCurrentEntryValueFromTileCurrentRowValues();
+           setCurrentSquareValueBasedOnOpenSquares();
+       }
+   }
+
+    function deleteLastNumber() {
+        hidePopup();
+        //THIS NEW WAY ALLOWS FOR THE FACT THAT SOME SQUARE CAN BE EMPTY IN THE MIDDLE OF THE CURRENT GUESS
+        var deleteWasMade = false;
+        if(document.getElementById(currentGuessNum + "-4").innerHTML != "") {
+            document.getElementById(currentGuessNum + "-4").innerHTML = "";
+            document.getElementById(currentGuessNum + "-4").style.borderColor = "rgb(200, 200, 200)";
+            deleteWasMade = true;
+        }
+        else if(document.getElementById(currentGuessNum + "-3").innerHTML != "") {
+            document.getElementById(currentGuessNum + "-3").innerHTML = "";
+            document.getElementById(currentGuessNum + "-3").style.borderColor = "rgb(200, 200, 200)";
+            deleteWasMade = true;
+        }
+        else if(document.getElementById(currentGuessNum + "-2").innerHTML != "") {
+            document.getElementById(currentGuessNum + "-2").innerHTML = "";
+            document.getElementById(currentGuessNum + "-2").style.borderColor = "rgb(200, 200, 200)";
+            deleteWasMade = true;
+        }
+        else if(document.getElementById(currentGuessNum + "-1").innerHTML != "") {
+            document.getElementById(currentGuessNum + "-1").innerHTML = "";
+            document.getElementById(currentGuessNum + "-1").style.borderColor = "rgb(200, 200, 200)";
+            deleteWasMade = true;
+        }
+        if(deleteWasMade)
+            currentEntry = currentEntry.slice(0, -1);
+        
+        setCurrentSquareValueBasedOnOpenSquares();
+    }
+
+    //precondition: currentEntry.length == codeLength
+    function submitCurrentGuess() {
+        // document.getElementById("alert").innerHTML = "";
+        updateTileColors(currentEntry, currentGuessNum);
+        updatePegColors(currentEntry, currentGuessNum);
+        //updateKeyboardColors();
+        console.log("SUBMITTING GUESS");
+        //check for game over
+        checkWin();
+        checkLose();
+        if(!gameOver) {
+            //prepare for next word
+            currentGuessNum++;
+            currentSquare = 1;
+            currentEntry = "";
+        }
+    }
+
+    function isValidGuess() {
+        return true;
+    }
+    
+    function checkWin() {
+        if(currentEntry == winCode) {
+            var message = "Excellent!"
+            if(currentGuessNum == 1) message = "Genius!";
+            else if(currentGuessNum == 2) message = "Magnificent!";
+            else if(currentGuessNum == 3) message = "Impressive!";
+            else if(currentGuessNum == 4) message = "Splendid!";
+            else if(currentGuessNum == 5) message = "Great!";
+            else message = "Phew!";
+            // document.getElementById("alert").innerHTML = '+ to play again';
+            gameOver = true;
+            showPlayAgainButton();
+            setWinColors();
+            showPopup(message, 'green');
+        }
+    }
+
+    function checkLose() {
+        if(!gameOver && currentGuessNum >= numGuesses) {
+            // var message = "You lose! The number was <em>" + winCode + "</em>";
+            var message = "The code was: " + winCode;
+            gameOver = true;
+            showPlayAgainButton();
+            setLoseColors();
+            showPopup(message, 'red');
+        }
+    }
+    
+    function updateTileColors(currentEntry, currentGuessNum) {
+        for(var i = 1; i <= 4; i++) {
+
+            var currentTile = document.getElementById(currentGuessNum + "-" + i);
+
+            //Assign default colors
+            // var fillColor = "white";
+            var borderColor = "black";
+            var textColor = "black";
+            
+            //Paint the identified colors
+            // currentTile.style.backgroundColor = fillColor;
+            currentTile.style.borderColor = borderColor;
+            currentTile.style.color = textColor;
+        }
+    }
+
+    function setWinColors() {
+        for(var i = 1; i <= 4; i++) {
+
+            var currentTile = document.getElementById(currentGuessNum + "-" + i);
+
+            //Assign default colors
+            var fillColor = "green";
+            var borderColor = "#aaa";
+            var textColor = "white";
+            
+            //Paint the identified colors
+            currentTile.style.backgroundColor = fillColor;
+            currentTile.style.borderColor = borderColor;
+            currentTile.style.color = textColor;
+        }
+    }
+
+    function setLoseColors() {
+        for(var i = 1; i <= 4; i++) {
+
+            var currentTile = document.getElementById(currentGuessNum + "-" + i);
+
+            //Assign default colors
+            var fillColor = "red";
+            var borderColor = "#aaa";
+            var textColor = "white";
+            
+            //Paint the identified colors
+            currentTile.style.backgroundColor = fillColor;
+            currentTile.style.borderColor = borderColor;
+            currentTile.style.color = textColor;
+        }
+    }
+
+    function updatePegColors(currentEntry, currentGuessNum) {
+        var colorCodes = getGuessAsColorCodes(currentEntry);
+        console.log("USING CODE FOR PEGS: " + colorCodes);
+        for(var i = 0; i < colorCodes.length; i++) {
+            var currentSquare = colorCodes.substring(i, i+1);
+            var currentTile = document.getElementById("pegs" + currentGuessNum + "-" + (i+1));
+
+            //Assign default colors
+            var fillColor = "#fff";
+            var borderColor = "#aaa";
+
+            //Determine peg colora
+            if(currentSquare == 'A') { //correct location
+                fillColor = "green";
+            }
+            else if(currentSquare == 'B') { //right number, wrong location
+                fillColor = "red";
+            }
+
+            //Paint the identified colors
+            currentTile.style.backgroundColor = fillColor;
+            // currentTile.style.border = borderColor;
+        }
+    }
+    
+    function getGuessAsColorCodes(guess)
+    {
+      var win = winCode;
+      //Identify GREEN locations with "*"
+      for(var i=0; i < guess.length; i++)
+         if(guess.charAt(i) == win.charAt(i)) {
+            guess = guess.substring(0, i) + "A" + guess.substring(i+1);
+            win = win.substring(0, i) + "A" + win.substring(i+1);
+         }
+      
+      //Identify GOLD locations with "+"
+      for(var i=0; i < guess.length; i++) {
+         if(guess.charAt(i) != 'A') {// && guess.charAt(i) != '+') {
+            var index = win.indexOf(guess.charAt(i));
+            if(index >= 0) {
+               guess = guess.substring(0, i) + "B" + guess.substring(i+1);            
+               win = win.substring(0, index) + "B" + win.substring(index+1);
+            }
+         }
+      }
+      
+      var codeForPegs = "";
+      for(var i = 0; i < guess.length; i++)
+        if(guess.charAt(i) == 'A' || guess.charAt(i) == 'B')
+            codeForPegs += guess.charAt(i);
+      
+      var sorted = codeForPegs.split('').sort().join('');
+      
+      console.log("CURRENT VALUES: " + guess + " " + win + " " + codeForPegs + " " + sorted);
+      
+      return sorted;   
+   }
+
+   function showPlayAgainButton() {
+       var enterButton = document.getElementById("enter-key");
+       enterButton.innerHTML = "Play Again";
+       enterButton.style.backgroundColor = "#3498DB"
+       enterButton.style.color = "#fff"
+   }
+
+   function showEnterButton() {
+       var enterButton = document.getElementById("enter-key");
+       enterButton.innerHTML = "Enter";
+       enterButton.style.backgroundColor = "rgb(220, 220, 220)";
+       enterButton.style.color = "#000";
+   }
+
+   function setCurrentEntryValueFromTileCurrentRowValues() {
+       var firstTileNum = document.getElementById(currentGuessNum + "-1").innerHTML;
+       var secondTileNum = document.getElementById(currentGuessNum + "-2").innerHTML;
+       var thirdTileNum = document.getElementById(currentGuessNum + "-3").innerHTML;
+       var fourthTileNum = document.getElementById(currentGuessNum + "-4").innerHTML;
+       currentEntry = firstTileNum + secondTileNum + thirdTileNum + fourthTileNum;
+       console.log("ENTRY AFTER PRESS IS: " + currentEntry);
+   }
+
+   function resetGame()
+   {
+        gameOver = false;
+        // random = Math.round(Math.random()*(words.length-1));
+        // winCode = words[random].toUpperCase();
+        setWinCode();
+        currentGuessNum = 1;
+        currentSquare = 1;
+        currentEntry = "";
+
+        // hidePopup();
+        // document.getElementById("alert").innerHTML = "Welcome to Mastermind";
+
+        //Assign default colors
+        // var fillColor = "#fff";
+        var fillColor = "white";
+        var borderColor = "rgb(200,200,200)";
+        var textColor = "black";
+
+        //reset the board tiles
+        for(var r = 1; r <= numGuesses; r++) {
+            for(var c = 1; c <= codeLength; c++) {
+
+                var currentTile = document.getElementById(r + "-" + c);
+                
+                //Paint the identified colors
+                currentTile.innerHTML = "";
+                currentTile.style.backgroundColor = fillColor;
+                currentTile.style.borderStyle = "solid";
+                currentTile.style.borderWidth = "2px";
+                currentTile.style.borderColor = borderColor;
+                currentTile.style.color = textColor;
+            }
+            for(var peg = 1; peg <= 4; peg++) {
+                var currentPeg = document.getElementById("pegs" + r + "-" + peg);
+                currentPeg.style.backgroundColor = "#fff";
+            }
+        }
+
+        //reset keyboard colors
+        var keys = document.getElementsByClassName("letters");
+
+        for(var i=0; i< keys.length; i++){
+            keys[i].style.color = "black";
+            keys[i].style.backgroundColor = "rgb(220,220,220)";
+            keys[i].style.borderColor = "rgb(220,220,220)";
+        }
+
+       showEnterButton();
+
+       activateLevelDropDown();
+
+       var message = "Break the code!";
+       showPopup(message, 'black');
+    }
+
+    function activateLevelDropDown() {
+        document.getElementById("levelButton").disabled = false;
+        document.getElementById("levelButton").style.backgroundColor = "#3498DB";
+    }
+    
+    function deactivateLevelDropDown() {
+        document.getElementById("levelButton").disabled = true;
+        document.getElementById("levelButton").style.backgroundColor = "#aaa";
+    }
+
+    /* When the user clicks on the button,
+    toggle between hiding and showing the dropdown content */
+    function levelSelection() {
+        console.log("LEVEL SELECTION");
+        document.getElementById("myDropdown").classList.toggle("show");
+    }
+
+    // Close the dropdown menu if the user clicks outside of it
+    window.onclick = function(event) {
+        if (!event.target.matches('.dropbtn')) {
+            var dropdown = document.getElementById("myDropdown");
+            if (dropdown.classList.contains('show'))
+                dropdown.classList.remove('show');
+        }
+    }
+
+    function setLevelToEasy() {
+        document.getElementById("levelButton").innerHTML = "Easy";
+        difficulty = 0;
+        setWinCode();
+    }
+
+    function setLevelToMedium() {
+        document.getElementById("levelButton").innerHTML = "Medium";
+        difficulty = 1;
+        setWinCode();
+    }
+
+    function setLevelToHard() {
+        document.getElementById("levelButton").innerHTML = "Hard";
+        difficulty = 2;
+        setWinCode();
+    }
+
+    function showPopup(message, color) {
+        var popup = document.getElementById("myPopup");
+        popup.innerHTML = message;
+        popup.style.visibility = 'visible';
+        popup.style.backgroundColor = color;
+        // popup.classList.toggle('show'); explore a fade
+    }
+
+    function hidePopup() {
+        var popup = document.getElementById("myPopup");
+        popup.innerHTML = "";
+        popup.style.visibility = 'hidden';
+    }
+
+</script>
+
+<body onload="wordle()">
+
+    <div class="title-container">
+        <h1 id="title">Mastermind</h1>
+        
+        
+        <div class="dropdown">
+            <button onclick="levelSelection()" class="dropbtn" id="levelButton">Easy</button>
+            <div id="myDropdown" class="dropdown-content">
+                <a onclick="setLevelToEasy()">Easy</a>
+                <a onclick="setLevelToMedium()">Medium</a>
+                <a onclick="setLevelToHard()">Hard</a>
+            </div>
+        </div>
+
+    </div>
+
+
+    <div class="center popup">
+        <div class="popuptext" id="myPopup">Mastermind!</div>
+    </div>
+
+    <div class="container d-flex justify-content-center mt-3">
+        <table>
+            <tr>
+                <td id="1-1" onclick="setNextNumberOnTile('1-1')"></td>
+                <td id="1-2" onclick="setNextNumberOnTile('1-2')"></td>
+                <td id="1-3" onclick="setNextNumberOnTile('1-3')"></td>
+                <td id="1-4" onclick="setNextNumberOnTile('1-4')"></td>
+                <td id="pegbox"
+                    <div class="peg-container">
+                        <div class="peg" id="pegs1-1"></div>
+                        <div class="peg" id="pegs1-2"></div>
+                        <div class="peg" id="pegs1-3"></div>
+                        <div class="peg" id="pegs1-4"></div>
+                    </div>
+                </td>
+            </tr>
+            <tr class="m-2">
+                <td id="2-1" onclick="setNextNumberOnTile('2-1')"></td>
+                <td id="2-2" onclick="setNextNumberOnTile('2-2')"></td>
+                <td id="2-3" onclick="setNextNumberOnTile('2-3')"></td>
+                <td id="2-4" onclick="setNextNumberOnTile('2-4')"></td>
+                <td id="pegbox"
+                    <div class="peg-container">
+                        <div class="peg" id="pegs2-1"></div>
+                        <div class="peg" id="pegs2-2"></div>
+                        <div class="peg" id="pegs2-3"></div>
+                        <div class="peg" id="pegs2-4"></div>
+                    </div>
+                </td>
+            </tr>
+            <tr class="m-2">
+                <td id="3-1" onclick="setNextNumberOnTile('3-1')"></td>
+                <td id="3-2" onclick="setNextNumberOnTile('3-2')"></td>
+                <td id="3-3" onclick="setNextNumberOnTile('3-3')"></td>
+                <td id="3-4" onclick="setNextNumberOnTile('3-4')"></td>
+                <td id="pegbox"
+                    <div class="peg-container">
+                        <div class="peg" id="pegs3-1"></div>
+                        <div class="peg" id="pegs3-2"></div>
+                        <div class="peg" id="pegs3-3"></div>
+                        <div class="peg" id="pegs3-4"></div>
+                    </div>
+                </td>
+            </tr>
+            <tr class="m-2">
+                <td id="4-1" onclick="setNextNumberOnTile('4-1')"></td>
+                <td id="4-2" onclick="setNextNumberOnTile('4-2')"></td>
+                <td id="4-3" onclick="setNextNumberOnTile('4-3')"></td>
+                <td id="4-4" onclick="setNextNumberOnTile('4-4')"></td>
+                <td id="pegbox"
+                    <div class="peg-container">
+                        <div class="peg" id="pegs4-1"></div>
+                        <div class="peg" id="pegs4-2"></div>
+                        <div class="peg" id="pegs4-3"></div>
+                        <div class="peg" id="pegs4-4"></div>
+                    </div>
+                </td>
+                </tr>
+            <tr class="m-2">
+                <td id="5-1" onclick="setNextNumberOnTile('5-1')"></td>
+                <td id="5-2" onclick="setNextNumberOnTile('5-2')"></td>
+                <td id="5-3" onclick="setNextNumberOnTile('5-3')"></td>
+                <td id="5-4" onclick="setNextNumberOnTile('5-4')"></td>
+                <td id="pegbox"
+                    <div class="peg-container">
+                        <div class="peg" id="pegs5-1"></div>
+                        <div class="peg" id="pegs5-2"></div>
+                        <div class="peg" id="pegs5-3"></div>
+                        <div class="peg" id="pegs5-4"></div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <div class="container d-flex justify-content-center mt-3">
+        <table>
+            <tr>
+                <td class="keyboard-key number-key" id="1" onclick="keyboard('49')">1</td>
+                <td class="keyboard-key number-key" id="2" onclick="keyboard('50')">2</td>
+                <td class="keyboard-key number-key" id="3" onclick="keyboard('51')">3</td>
+                <td class="keyboard-key number-key" id="4" onclick="keyboard('52')">4</td>
+                <td class="keyboard-key" id="delete-key" onclick="keyboard('delete')">&#x232B;</td>
+            </tr>
+        </table>
+    </div>
+    <div class="container d-flex justify-content-center">
+        <table>
+            <tr>
+                <td class="keyboard-key" id="spacer-key"></td>
+                <td class="keyboard-key" id="enter-key" onclick="keyboard('enter')">Enter</td>
+<!--                 <td class="keyboard-key" id="enter-key" onclick="keyboard('enter')">&#9166</td> -->
+                <td class="keyboard-key" id="spacer-key"></td>
+            </tr>
+        </table>
+    </div>
+<!--  A MESSAGE FIELD THAT WAS ELIMINATED IN LIEU OF THE POPUP MESSAGE    -->
+<!--     <p class="text-center mt-3" id="alert">Welcome to Mastermind</p> -->
+<!--     <div class="container d-flex justify-content-center"> -->
+<!--         <table> -->
+<!--             <tr> -->
+<!--                 <td class="keyboard-key" id="play-again" onclick="keyboard('187')">Play Again</td> -->
+<!--             </tr> -->
+<!--         </table> -->
+<!--     </div> -->
+
+
+</body>
+</html>
+
+<style>
+    html {
+        overflow-x: hidden;
+        -webkit-user-select: none;        
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+    }
+    h1 {
+        font-size: 36px;
+        font-weight: bold!important;
+    }
+    .title-container {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+    }
+    #title {
+        flex-basis: 215px; /* for centering */
+        margin-top: 20px;
+        margin-bottom: 16px;
+        font-family: serif
+    }
+    #navbar {
+        background-color: #fff;
+        border-bottom:1px solid #000;
+    }
+    a {
+        color: #110e01!important;
+    }
+    body {
+        background-color: #fff
+    }
+    table {
+        border-collapse: separate;
+        border-spacing: 6px;
+    }
+    td {
+        width: 60px;
+        height: 60px;
+        border: 2px solid rgb(200, 200, 200);
+        color: black;
+        text-align: center;
+        font-weight: bold;
+        font-size: 30px;
+    }
+    
+    p {
+        font-size: 20px;
+        font-weight: bold;
+        color: #ff0000;
+    }
+    
+    .peg {
+/*         height: 20px; */
+/*         width: 20px; */
+        border-radius: 50%;
+/*         background-color: green; */
+        border: 1px solid #aaa;
+    }
+    
+    .peg-container {
+        display: grid;
+        grid-template-columns: 20px 20px;
+        grid-row: 20px 20px;
+        grid-column-gap: 4px;
+        grid-row-gap: 4px;
+        padding: 6px 4px 8px 8px;
+        border-width: 0px;
+    }
+    
+    .keyboard-key {
+        width: 60px;
+        height: 72px;
+        background-color: rgb(220, 220, 220);
+        border-radius: 10px;
+        border: 2px solid rgb(180, 180, 180);
+        color: #000;
+        text-align: center;
+        font-weight: bold;
+        font-size: 20px;
+    }
+    
+/*     #play-again { */
+/*         width: 180px; */
+/*         padding: 18px 0px; */
+/*         display: none; */
+/*     } */
+
+    #enter-key {
+        width: 192px;
+    }
+
+    #delete-key {
+        font-size: 32px;
+    }
+    
+    #spacer-key {
+        border: none;
+        background-color: #fff;
+    }
+
+
+ /* Level Selection Stuff */
+    /* Dropdown Button */
+    .dropbtn {
+        width: 90px;
+        height: 32px;
+        background-color: #3498DB;
+        color: white;
+        /* padding: 0px 6px 5px 0x; */
+        font-size: 16px;
+        border: none;
+        cursor: pointer;
+        border-radius: 5px;
+        margin-top: 2px;
+    }
+    
+    /* Dropdown button on hover & focus */
+    .dropbtn:hover, .dropbtn:focus {
+        background-color: #2980B9;
+    }
+    
+    /* The container <div> - needed to position the dropdown content */
+    .dropdown {
+        position: relative;
+        display: inline-block;
+    }
+    
+    /* Dropdown Content (Hidden by Default) */
+    .dropdown-content {
+        display: none;
+        position: absolute;
+        background-color: #f1f1f1;
+        /* min-width: 80px; */
+        width: 82px;
+        box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+        z-index: 1;
+        margin-left: 4px;
+        text-align: center;
+    }
+    
+    /* Links inside the dropdown */
+    .dropdown-content a {
+        color: black;
+        padding: 12px 16px;
+        text-decoration: none;
+        display: block;
+    }
+    
+    /* Change color of dropdown links on hover */
+    .dropdown-content a:hover {background-color: #ddd;}
+    
+    /* Show the dropdown menu (use JS to add this class to the .dropdown-content container when the user clicks on the dropdown button) */
+    .show {display:block;}
+    
+    
+/* popup stuff */
+    .center {
+        /* border: 5px solid; */
+        margin: auto;
+        width: 100px;
+        padding: 10px;
+    }
+    .popup {
+        width: 100%;
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        /* cursor: pointer; */
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+    }
+    /* The actual popup */
+    .popup .popuptext {
+        visibility: hidden;
+        font-size: 16px;
+        font-weight: 600;
+/*         background-color: rgb(0, 0, 0); */
+        background-color: red;
+        color: #fff;
+        /* text-align: center; */
+        border-radius: 4px;
+        padding: 10px 10px;
+        position: absolute;
+        z-index: 1;
+        /* margin-top: 0px; */
+    }
+    /* Toggle this class - hide and show the popup */
+    .popup .show {
+        visibility: visible;
+        -webkit-animation: fadeIn 1s;
+        animation: fadeIn 2s;
+    }
+    /* Add animation (fade in the popup) */
+    @-webkit-keyframes fadeIn {
+        from {opacity: 0;} 
+        to {opacity: 1;}
+    }
+    @keyframes fadeIn {
+        from {opacity: 0;}
+        to {opacity:1 ;}
+    }
+</style>
