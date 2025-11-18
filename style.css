@@ -1,0 +1,231 @@
+/* Basic reset and global styles */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    background-color: #f4f4f4;
+    color: #333;
+}
+
+/* Header styling */
+header {
+    background-color: #486095;
+    color: #fff;
+    text-align: center;
+    padding: 2rem;
+    margin-bottom: 2rem;
+}
+
+header h1 {
+    margin-bottom: 0.5rem;
+}
+
+/* Main content container */
+main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+
+/* Project grid layout */
+.project-grid {
+    display: flex;
+    flex-wrap: wrap; /* Allows cards to wrap to the next line on small screens */
+    gap: 1.5rem; /* Space between cards */
+    justify-content: center;
+}
+
+/* Individual project card styling */
+.project-card {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    overflow: hidden; /* Ensures image corners are rounded */
+    width: 350px; /* Set a fixed width for each card */
+    display: flex;
+    flex-direction: column; /* Stacks content vertically */
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.project-card:hover {
+    transform: translateY(-5px); /* Lifts the card on hover */
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.project-card img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover; /* Ensures images cover the area nicely */
+}
+
+.project-card h3 {
+    font-size: 1.25rem;
+    padding: 1rem 1rem 0.5rem 1rem;
+}
+
+.project-card p {
+    padding: 0 1rem 1rem 1rem;
+    flex-grow: 1; /* Makes description fill available space */
+}
+
+/* Links (buttons) at the bottom of the card */
+.project-links {
+    padding: 1rem;
+    background-color: #f9f9f9;
+    border-top: 1px solid #eee;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.project-links a {
+    text-decoration: none;
+    color: #fff;
+    background-color: #007BFF;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    font-weight: bold;
+    transition: background-color 0.2s ease;
+}
+
+.project-links a:hover {
+    background-color: #0056b3;
+}
+
+/* Style for the "GitHub" button */
+.project-links a:last-child {
+    background-color: #555;
+}
+
+.project-links a:last-child:hover {
+    background-color: #333;
+}
+
+/* Footer styling */
+footer {
+    text-align: center;
+    padding: 2rem;
+    margin-top: 2rem;
+    color: #777;
+}
+
+/* --- ADD THIS TO THE BOTTOM OF YOUR EXISTING STYLE.CSS --- */
+
+/* Breadcrumb navigation */
+.breadcrumb {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem 1rem 0 1rem;
+}
+
+.breadcrumb a {
+    text-decoration: none;
+    color: #007BFF;
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.breadcrumb a:hover {
+    text-decoration: underline;
+}
+
+/* Project Detail Page Layout */
+.project-detail-container {
+    max-width: 1000px; /* Wider than the main grid for reading */
+    margin: 1rem auto;
+    padding: 0 1rem;
+}
+
+.project-detail-card {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    padding: 2rem;
+}
+
+.project-detail-card h1 {
+    font-size: 2.5rem;
+    margin-bottom: 1.5rem;
+    color: #333;
+}
+
+.project-detail-card h2 {
+    font-size: 1.75rem;
+    color: #444;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.project-section {
+    margin-bottom: 2.5rem; /* Space between sections */
+}
+
+.project-section p {
+    font-size: 1.4rem;
+    line-height: 1.7;
+    margin-bottom: 1rem;
+}
+
+/* Project Detail Image */
+.project-detail-image {
+    width: 200px; /* NEW: Set a specific width for the floated image */
+    height: auto;
+    border-radius: 8px;
+    /* margin: 0 0 1rem 1.5rem; NEW: Top Right Bottom Left margins. Push text away from image. */
+    /* float: right; NEW: Float the image to the right */
+    margin: 0 1.5rem 1rem 0; /* Pushes text away on the RIGHT */
+    float: left; /* Floats to the LEFT */
+    border: 1px solid #ddd;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* Optional: Add a subtle shadow */
+}
+
+/* Clearfix for sections that contain floated elements */
+.clearfix::after {
+    content: "";
+    display: table;
+    clear: both;
+}
+
+/* Ensure subsequent elements don't wrap around if desired */
+.project-section + .project-section {
+    clear: both; /* Ensures new sections start below any floated elements */
+}
+
+/* Video Wrapper (for responsiveness) */
+.video-wrapper {
+    position: relative;
+    padding-bottom: 56.25%; /* 16:9 aspect ratio */
+    height: 0;
+    overflow: hidden;
+    border-radius: 8px;
+    background: #000;
+}
+
+.video-wrapper video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+/* Code Block Styling */
+pre {
+    background-color: #2d2d2d; /* Dark background */
+    color: #f8f8f2; /* Light text */
+    padding: 1.5rem;
+    border-radius: 8px;
+    overflow-x: auto; /* Adds a horizontal scrollbar if code is wide */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3) inset;
+}
+
+code {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
