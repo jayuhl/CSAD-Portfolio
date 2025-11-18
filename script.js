@@ -21,7 +21,7 @@ const projects = [
         title: "Project 3: BopIt App",
         description: "A description for a third project. You can add as many as you like! Just copy this format.",
         imageUrl: "./images/BopItApp_image.png",
-        demoUrl: "../pages/BopIt.html",
+        demoUrl: "BopIt.html",
         repoUrl: "#"
     }
     // Add more projects here...
